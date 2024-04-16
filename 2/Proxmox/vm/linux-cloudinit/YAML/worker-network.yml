@@ -1,0 +1,14 @@
+#cloud-config
+
+network:
+    version: 2
+    ethernets:
+        eth0:
+            dhcp4: no
+            addresses: [11.1.0.11/24]
+            gateway4: 11.1.0.1
+            nameservers:
+                addresses: [1.1.1.1,8.8.8.8]
+            match:
+                macaddress: 06:d6:fc:45:32:62
+            set-name: eth0

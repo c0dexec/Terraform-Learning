@@ -1,0 +1,103 @@
+#cloud-config
+
+# Machine hostname
+hostname: master-node
+
+# Add groups to the system
+# The following example adds the 'admingroup' group with members 'root' and 'sys'
+# and the empty group cloud-users.
+groups:
+  - admingroup: [root, sys]
+  - cloud-users
+
+# Add users to the system. Users are added after groups are added.
+# Note: Most of these configuration options will not be honored if the user
+#       already exists. Following options are the exceptions and they are
+#       applicable on already-existing users:
+#       - 'plain_text_passwd', 'hashed_passwd', 'lock_passwd', 'sudo',
+#         'ssh_authorized_keys', 'ssh_redirect_user'.
+users:
+  - name: c0dexec
+    gecos: c0dexec
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    groups: users, admin, sudo
+    lock_passwd: false
+    # Using openssl we get the hash `openssl passwd -1 -salt cheeku salmon`
+    passwd: $1$cheeku$9jRkbPoaRv2r..GQM/tzt0
+    ssh_authorized_keys:
+      - ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBAHyPwq2ILHi+KzZjNWt9YPYXhIZAsg0QJWbBl9yO7N2SmAEVB2GZPTuhK7X/D3qQHQKBy+NseeB4YapEO8B9qaXSgFvybwcaDlbMDtH3s4XaVtoVqtoEF+WRt6/iH707JEHi3+wxyaVl4saG+PqqIwiiMnRVaqKiTzgt8a0h27pO/wWPg== root@pve-R730
+      - ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBAFD5KEaRSysh/sT/hlpUvz9CxkZqGaPTHcPm+48D3Cb5eaGYH0Kd3GG6Hg5g//M7SyG6+jSUJnduI2zcOjkh60EFwA+ldQ3xKHEXrB13Pph4k2E5Yx2VnaIOG7amm0Q33Aey/URgu5JnC4dO92o/W63ZsmOWt+ztoigxigOaz2l9pNV+g== root@pve-R730
+
+write_files:
+  - path: /root/kube-container-runtime.sh
+    owner: root:root
+    permissions: "0755"
+    content: |
+      cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+      overlay
+      br_netfilter
+      EOF
+
+      sudo modprobe overlay
+      sudo modprobe br_netfilter
+
+      # sysctl params required by setup, params persist across reboots
+      cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+      net.bridge.bridge-nf-call-iptables  = 1
+      net.bridge.bridge-nf-call-ip6tables = 1
+      net.ipv4.ip_forward                 = 1
+      EOF
+
+      # Apply sysctl params without reboot
+      sudo sysctl --system
+
+# Adding ssh package
+package_update: true
+package_upgrade: true
+
+packages:
+  - ssh
+  - sudo
+  - apt-transport-https
+  - ca-certificates
+  - curl
+  - gnupg
+  - git
+
+apt:
+  sources:
+    kubernetes.list:
+      source: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.28/deb/ /"
+
+runcmd:
+  - "sudo mkdir -m 755 /etc/apt/keyrings"
+  - "curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg"
+  # For Docker installation
+  - "curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg"
+  - "sudo chmod a+r /etc/apt/keyrings/docker.gpg"
+  - 'echo "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null'
+  - "sudo apt-get update"
+  - "sudo apt-get install -y kubelet kubeadm kubectl containerd.io qemu-guest-agent"
+  - "sudo apt-mark hold kubelet kubeadm kubectl"
+  - "sudo systemctl enable qemu-guest-agent.service"
+  - "/root/kube-container-runtime.sh"
+  - "containerd config default > /etc/containerd/config.toml && sed 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/config.toml && sudo systemctl restart containerd"
+
+ssh_keys:
+  ecdsa_private: | # Private key for user "c0dexec" on "master-node".
+    -----BEGIN OPENSSH PRIVATE KEY-----
+    b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAArAAAABNlY2RzYS
+    1zaGEyLW5pc3RwNTIxAAAACG5pc3RwNTIxAAAAhQQBBEEWMXO8KBfwJlBk81fA/PQCy2CE
+    WGR5vMoZA9H4eqWmRLXqKa7G5MwtJTGN0c7nxmpjcappA91rG5r/B9HX8rsAaBxMyW+Gzj
+    vxwUTworedWCH7S1L3BAGSFMsRuaZAlz/wfh5yBDm53bHmo8MtQs+u0cCNSbdeKoaGkJsL
+    Caa6QzIAAAEQ3ayp2d2sqdkAAAATZWNkc2Etc2hhMi1uaXN0cDUyMQAAAAhuaXN0cDUyMQ
+    AAAIUEAQRBFjFzvCgX8CZQZPNXwPz0AstghFhkebzKGQPR+HqlpkS16imuxuTMLSUxjdHO
+    58ZqY3GqaQPdaxua/wfR1/K7AGgcTMlvhs478cFE8KK3nVgh+0tS9wQBkhTLEbmmQJc/8H
+    4ecgQ5ud2x5qPDLULPrtHAjUm3XiqGhpCbCwmmukMyAAAAQQN5H17HCrznRrEpWbklAmbw
+    1lch3yFh5C4Md1ydQ9RH7VIZYvZM44x7ZgS/kS0bMgvYqOu0TO/NvhVAU62QcC0DAAAADX
+    Jvb3RAcHZlLVI3MzABAgMEBQY=
+    -----END OPENSSH PRIVATE KEY-----
+
+  ecdsa_public: | # Public key for user "c0dexec" on "master-node".
+    ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBAEEQRYxc7woF/AmUGTzV8D89ALLYIRYZHm8yhkD0fh6paZEteoprsbkzC0lMY3RzufGamNxqmkD3Wsbmv8H0dfyuwBoHEzJb4bOO/HBRPCit51YIftLUvcEAZIUyxG5pkCXP/B+HnIEObndseajwy1Cz67RwI1Jt14qhoaQmwsJprpDMg== root@pve-R730
