@@ -3,13 +3,14 @@ provider "proxmox" {
   pm_api_url          = var.proxmox_url
   pm_api_token_id     = var.proxmox_user
   pm_api_token_secret = var.proxmox_password
+  pm_tls_insecure     = true
 
   # /*
   # Enables extra logging https://github.com/Telmate/terraform-provider-proxmox/issues/455#issuecomment-984324159
   # */
-  # pm_debug      = true
-  # pm_log_enable = true
-  # pm_log_file   = "terraform-plugin-proxmox.log"
+  pm_debug      = true
+  pm_log_enable = true
+  pm_log_file   = "terraform-plugin-proxmox.log"
   # pm_log_levels = {
   #   _default    = "debug"
   #   _capturelog = ""
@@ -30,6 +31,7 @@ provider "proxmox" {
 #   }
 # }
 
+# Specify the IP address you want to use for the VM
 locals {
   ip_network     = "11.1.0."
   ip_host_bit    = var.vm_ip_host
@@ -43,63 +45,71 @@ locals {
 
 resource "proxmox_vm_qemu" "vms" {
   # Variables are defined before they get used later on by the "root" module.
-  name    = "VM-${count.index}"
-  desc    = "Provisioning VM for Kubernetes cluster via Terraform."
-  tags    = "terraform,kubernetes"
-  count   = var.vm_count
+  name  = "${var.vm_name}-${count.index}"
+  desc  = "Provisioning VM for Kubernetes cluster via Terraform."
+  tags  = var.tags
+  count = var.vm_count
   # bios    = "seabios"
   os_type = "cloud-init"
 
   clone  = var.vm_clone
   scsihw = "virtio-scsi-pci"
-  boot   = "order=scsi0"
 
   target_node = var.proxmox_node
 
   memory  = var.vm_memory
   balloon = "1"
 
-  cores   = var.vm_cores
-  sockets = 1
-  vcpus   = 0
-  cpu     = "host"
+  cores    = var.vm_cores
+  sockets  = 1
+  vcpus    = 0
+  cpu_type = "host"
 
-  agent = 0
+  agent = 1
 
   network {
     model  = "virtio"
     bridge = var.vm_bridge
+    id     = 0
   }
 
   disks {
     scsi {
       scsi0 {
         disk {
-          storage = "evo970"
-          size    = var.vm_disk-size
+          storage    = var.storage_disk
+          size       = var.vm_disk-size
+          emulatessd = true
+          discard    = true
+        }
+      }
+    }
+    ide {
+      ide0 {
+        cloudinit {
+          storage = var.storage_disk
         }
       }
     }
   }
+  boot = "order=ide0;scsi0"
 
   vga {
     type = var.vm_display
   }
 
-  cloudinit_cdrom_storage = "local-lvm"
-  ciuser                  = "root"
-  cipassword              = "salmon"
-  # cicustom                = "user=local:snippets/user.yaml"
-  ipconfig0 = "ip=${local.ip_network}${sum([local.ip_host_bit + count.index])}/${local.ip_network_bit},gw=${local.ip_gateway}"
+  ciuser          = "root"
+  cipassword      = "salmon"
+  cicustom        = "user=local:snippets/user.yml"
+  ipconfig0       = "ip=dhcp"
   ssh_private_key = file("./ssh-keys/root")
-  sshkeys   = file("./ssh-keys/root.pub")
+  sshkeys         = file("./ssh-keys/root.pub")
 
-  # connection {
-  #   user     = "root"
-  #   password = "salmon"
-  #   host     = "${local.ip_network}${sum([local.ip_host_bit + count.index])}"
-  #   type = "ssh"
-  # }
+  provisioner "remote-exec" {
+    inline = [
+      "ip a"
+    ]
+  }
 
   # provisioner "remote-exec" {
   #   inline = [ "whoami" ]

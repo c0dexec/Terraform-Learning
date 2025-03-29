@@ -22,7 +22,7 @@ resource "proxmox_vm_qemu" "proxmox_vm" {
   disk {
     type    = "scsi"
     storage = "Disk0"
-    size    = "120G"
+    size    = "60G"
     format  = "qcow2"
   }
 

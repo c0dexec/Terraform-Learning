@@ -17,6 +17,10 @@ variable "proxmox_password" {
   sensitive = true
 }
 
+variable "vm_name" {
+  type = string
+}
+
 variable "vm_display" {
   type = string
 }
@@ -58,4 +62,12 @@ variable "vm_count" {
 
 variable "vm_disk-size" {
   type = number
+}
+
+variable "storage_disk" {
+  type = string
+}
+
+variable "tags" {
+  type = string
 }

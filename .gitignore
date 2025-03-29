@@ -1,0 +1,8 @@
+**/*.yaml
+**/*.cfg
+**/*.tftpl
+**/ssh-keys
+**/*.tfstate*
+**/*.tfvars*
+**/*.log
+**/.terraform*

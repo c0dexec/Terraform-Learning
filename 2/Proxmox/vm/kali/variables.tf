@@ -19,14 +19,3 @@ variable "proxmox_url" {
 variable "proxmox_node" {
   type = string
 }
-
-variable "pve_user_password" {
-  type = string
-  sensitive = true
-  ephemeral = true
-}
-
-variable "ssh_public_key" {
-  type = string
-  sensitive = true
-}

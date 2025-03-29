@@ -12,9 +12,29 @@ variable "proxmox_node" {
   type = string
 }
 
+variable "proxmox_node_ip" {
+  type = string
+  default = "10.0.0.5"
+}
+
 variable "proxmox_password" {
   type = string
   sensitive = true
+}
+
+variable "pve_user" {
+  type = string
+  default = "root"
+}
+
+variable "pve_password" {
+  type = string
+  sensitive = true
+  ephemeral = true
+}
+
+variable "vm_name" {
+  type = string
 }
 
 variable "vm_display" {
@@ -41,6 +61,18 @@ variable "vm_ip_host" {
   type = number
 }
 
+variable "vm_ip_network" {
+  type = string
+}
+
+variable "vm_ip_network_bit" {
+  type = string
+}
+
+variable "vm_ip_gateway" {
+  type = string
+}
+
 variable "vm_ciuser" {
   type = string
   default = "root"
@@ -58,4 +90,20 @@ variable "vm_count" {
 
 variable "vm_disk-size" {
   type = number
+}
+
+variable "storage_disk" {
+  type = string
+}
+
+variable "vm_storage_disk" {
+  type = string
+}
+
+variable "ssh_public_key" {
+  type = string
+}
+
+variable "tags" {
+  type = string
 }
