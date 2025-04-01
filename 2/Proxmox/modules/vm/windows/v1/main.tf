@@ -1,6 +1,7 @@
 resource "proxmox_vm_qemu" "proxmox_vm" {
   # Variables are defined before they get used later on by the "root" module.
   name = var.vm_name
+  vmid = 0
   desc = var.vm_description
   iso  = var.vm_iso
 

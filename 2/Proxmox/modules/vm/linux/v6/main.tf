@@ -69,6 +69,7 @@ resource "proxmox_cloud_init_disk" "ci" {
 resource "proxmox_vm_qemu" "vms" {
   # Variables are defined before they get used later on by the "root" module.
   name  = local.vm_fname[count.index]
+  vmid = 0
   desc  = "Provisioning VM for Kubernetes cluster via Terraform."
   tags  = var.tags
   count = var.vm_count

@@ -46,6 +46,7 @@ locals {
 resource "proxmox_vm_qemu" "vms" {
   # Variables are defined before they get used later on by the "root" module.
   name  = "${var.vm_name}-${count.index}"
+  vmid = 0
   desc  = "Provisioning VM for Kubernetes cluster via Terraform."
   tags  = var.tags
   count = var.vm_count
